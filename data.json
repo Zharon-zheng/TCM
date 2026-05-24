@@ -1,88 +1,20 @@
 [
   {
-    "id": 1,
-    "system": "六经辨证",
-    "category": "太阳病证",
-    "sub_category": "太阳经证",
-    "syndrome_name": "太阳中风",
-    "symptoms": [
-      "恶风发热",
-      "汗出",
-      "头项强痛",
-      "鼻鸣",
-      "干呕",
-      "舌苔薄白",
-      "脉浮缓"
-    ],
-    "symptom_description": "恶风发热，汗出，头项强痛，或见鼻鸣，干呕，舌苔薄白，脉浮缓。",
-    "formulas": [
-      {
-        "name": "桂枝汤",
-        "composition": "桂枝、芍药、生姜、大枣、甘草",
-        "usage": "",
-        "note": ""
-      }
-    ],
-    "treatment_plan": "",
-    "notes": "",
-    "created_at": "2026-05-24 00:00:00",
-    "updated_at": "2026-05-24 16:30:21"
+    "formula_name": "桂枝汤",
+    "symptoms": "恶风发热，汗出，头项强痛，鼻鸣，干呕，舌苔薄白，脉浮缓。",
+    "composition": "桂枝、芍药、生姜、大枣、甘草",
+    "notes": ""
   },
   {
-    "id": 2,
-    "system": "六经辨证",
-    "category": "太阳病证",
-    "sub_category": "太阳经证",
-    "syndrome_name": "太阳伤寒",
-    "symptoms": [
-      "恶寒发热",
-      "头项强痛",
-      "身体疼痛",
-      "无汗而喘",
-      "脉浮紧"
-    ],
-    "symptom_description": "恶寒发热，头项强痛，身体疼痛，无汗而喘，脉浮紧。",
-    "formulas": [
-      {
-        "name": "麻黄汤",
-        "composition": "麻黄、桂枝、杏仁、甘草",
-        "usage": "",
-        "note": ""
-      }
-    ],
-    "treatment_plan": "",
-    "notes": "",
-    "created_at": "2026-05-24 00:00:00",
-    "updated_at": "2026-05-24 16:30:48"
+    "formula_name": "麻黄汤",
+    "symptoms": "恶寒发热，头项强痛，身体疼痛，无汗而喘，脉浮紧。",
+    "composition": "麻黄、桂枝、杏仁、甘草",
+    "notes": ""
   },
   {
-    "id": 3,
-    "system": "六经辨证",
-    "category": "少阳病证",
-    "sub_category": "",
-    "syndrome_name": "少阳病证",
-    "symptoms": [
-      "寒热往来",
-      "胸胁苦满",
-      "默默不欲饮食",
-      "心烦喜呕",
-      "口苦",
-      "咽干",
-      "目眩",
-      "脉弦"
-    ],
-    "symptom_description": "寒热往来，胸胁苦满，默默不欲饮食，心烦喜呕，口苦，咽干，目眩，脉弦。",
-    "formulas": [
-      {
-        "name": "小柴胡汤",
-        "composition": "柴胡、黄芩、人参、半夏、生姜、大枣、甘草",
-        "usage": "",
-        "note": ""
-      }
-    ],
-    "treatment_plan": "",
-    "notes": "",
-    "created_at": "2026-05-24 00:00:00",
-    "updated_at": "2026-05-24 16:30:58"
+    "formula_name": "小柴胡汤",
+    "symptoms": "寒热往来，胸胁苦满，默默不欲饮食，心烦喜呕，口苦，咽干，目眩，脉弦。",
+    "composition": "柴胡、黄芩、人参、半夏、生姜、大枣、甘草",
+    "notes": ""
   }
 ]

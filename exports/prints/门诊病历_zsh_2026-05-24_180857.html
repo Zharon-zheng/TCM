@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>门诊处方笺_zsh</title>
+  <style>
+    @page { size: A4 portrait; margin: 13mm 14mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SimSun", "Microsoft YaHei", sans-serif;
+      color: #111;
+      background: #fff;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .paper {
+      min-height: 270mm;
+      display: flex;
+      flex-direction: column;
+      padding: 4mm 2mm 0;
+    }
+    .top-line { display: flex; justify-content: flex-end; align-items: center; min-height: 24px; }
+    .stamp { border: 1px solid #333; padding: 2px 8px; font-size: 14px; }
+    .clinic { text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 1px; margin: 4px 0 0; }
+    .title { text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 7px; margin: 0 0 8px 7px; }
+    .patient-lines { border-top: 1px solid transparent; }
+    .row { display: flex; gap: 14px; margin: 5px 0; align-items: flex-end; }
+    .field { display: inline-flex; align-items: flex-end; min-width: 130px; white-space: nowrap; }
+    .field.wide { flex: 1; min-width: 220px; }
+    .field.mid { min-width: 170px; }
+    .field b, .long-field b { font-weight: 700; }
+    .field em {
+      flex: 1;
+      min-height: 22px;
+      padding: 0 8px 1px;
+      border-bottom: 1px solid #444;
+      font-style: normal;
+      text-align: center;
+    }
+    .long-field {
+      display: flex;
+      min-height: 24px;
+      margin: 5px 0;
+      align-items: flex-end;
+    }
+    .long-field em {
+      flex: 1;
+      min-height: 22px;
+      padding: 0 8px 1px;
+      border-bottom: 1px solid #444;
+      font-style: normal;
+      white-space: pre-wrap;
+    }
+    .rp-wrap {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 8px;
+      margin-top: 14px;
+      min-height: 118mm;
+    }
+    .rp { font-family: "Times New Roman", serif; font-size: 34px; line-height: 1; }
+    .rx-list {
+      padding-top: 8px;
+      font-size: 18px;
+      line-height: 1.65;
+      white-space: normal;
+    }
+    .rx-item { margin: 0 0 12px; break-inside: avoid; }
+    .rx-name { font-weight: 700; }
+    .rx-composition { padding-left: 24px; }
+    .rx-note { padding-left: 24px; font-size: 14px; }
+    .rx-free { white-space: pre-wrap; }
+    .note-line { margin: 3px 0; font-size: 13px; }
+    .notice { margin-top: 6px; color: #555; font-size: 10px; }
+    .signatures { margin-top: 12px; border-top: 1px solid #555; padding-top: 10px; }
+    .sign-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; margin: 8px 0; }
+    .sign { display: flex; align-items: flex-end; min-height: 26px; }
+    .sign b { font-weight: 700; white-space: nowrap; }
+    .sign span { flex: 1; border-bottom: 1px solid #444; margin-left: 8px; min-height: 22px; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .paper { min-height: auto; height: 270mm; }
+    }
+  </style>
+</head>
+<body>
+  <main class="paper">
+    <div class="top-line"><span class="stamp">普通</span></div>
+    <div class="clinic">中医门诊</div>
+    <div class="title">处方笺</div>
+    <section class="patient-lines">
+      <div class="row">
+        <span class="field mid"><b>姓名：</b><em>zsh</em></span>
+        <span class="field "><b>性别：</b><em>男</em></span>
+        <span class="field "><b>年龄：</b><em>23</em></span>
+        <span class="field mid"><b>日期：</b><em>2026-05-24</em></span>
+      </div>
+      <div class="row">
+        <span class="field mid"><b>电话：</b><em>19857163353</em></span>
+        <span class="field "><b>科别：</b><em>中医门诊</em></span>
+        <span class="field wide"><b>编号：</b><em>P1-V1</em></span>
+      </div>
+      <div class="long-field"><b>地址：</b><em>浙江大学玉泉校区</em></div>
+      <div class="long-field"><b>症状：</b><em>未填写</em></div>
+      <div class="long-field"><b>记录：</b><em>桂枝汤</em></div>
+    </section>
+    <section class="rp-wrap">
+      <div class="rp">Rp</div>
+      <div class="rx-list"><div class="rx-item"><div class="rx-name">【桂枝汤】</div><div class="rx-composition">桂枝、芍药、生姜、大枣、甘草</div></div></div>
+    </section>
+    
+    
+    <section class="signatures">
+      <div class="sign-row">
+        <div class="sign"><b>医师：</b><span></span></div>
+        <div class="sign"><b>配药：</b><span></span></div>
+        <div class="sign"><b>复核：</b><span></span></div>
+      </div>
+      <div class="sign-row">
+        <div class="sign"><b>药费：</b><span></span></div>
+        <div class="sign"><b>其他：</b><span></span></div>
+        <div class="sign"><b>合计：</b><span></span></div>
+      </div>
+    </section>
+    <div class="notice"></div>
+  </main>
+</body>
+</html>

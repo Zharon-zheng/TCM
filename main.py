@@ -21,7 +21,7 @@ BACKUP_DIR_NAME = "backup"
 EXPORT_DIR_NAME = "exports"
 PRINT_DIR_NAME = "prints"
 ALL_OPTION = "全部"
-DISCLAIMER = "本系统用于门诊资料记录、患者档案管理与知识库检索。"
+DISCLAIMER = ""
 COLOR_BG = "#f4f7f5"
 COLOR_SURFACE = "#ffffff"
 COLOR_PANEL = "#edf3ef"
@@ -81,12 +81,42 @@ def split_keywords(text):
 
 
 def formula_names(record):
-    names = []
-    for formula in record.get("formulas", []) or []:
-        name = normalize_text(formula.get("name"))
-        if name:
-            names.append(name)
-    return "、".join(names)
+    return normalize_text(record.get("formula_name"))
+
+
+def formula_symptoms_text(record):
+    symptoms = record.get("symptoms", "")
+    if isinstance(symptoms, list):
+        return "、".join(normalize_text(item) for item in symptoms if normalize_text(item))
+    return normalize_text(symptoms)
+
+
+def simplify_formula_record(item, fallback_id):
+    formulas = item.get("formulas", []) if isinstance(item, dict) else []
+    first_formula = formulas[0] if formulas and isinstance(formulas[0], dict) else {}
+    formula_name = (
+        normalize_text(item.get("formula_name"))
+        or normalize_text(first_formula.get("name"))
+        or normalize_text(item.get("syndrome_name"))
+    )
+    composition = normalize_text(item.get("composition")) or normalize_text(first_formula.get("composition"))
+    symptoms = formula_symptoms_text(item)
+    if not symptoms:
+        symptoms = normalize_text(item.get("symptom_description"))
+    notes_parts = [
+        normalize_text(item.get("notes")),
+        normalize_text(first_formula.get("note")),
+        normalize_text(first_formula.get("usage")),
+        normalize_text(item.get("treatment_plan"))
+    ]
+    notes = "\n".join(part for part in notes_parts if part)
+    return {
+        "id": item.get("id") if isinstance(item.get("id"), int) else fallback_id,
+        "formula_name": formula_name,
+        "symptoms": symptoms,
+        "composition": composition,
+        "notes": notes
+    }
 
 
 def sanitize_filename(value):
@@ -97,6 +127,18 @@ def sanitize_filename(value):
 def write_json(path, data):
     with Path(path).open("w", encoding="utf-8") as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
+
+
+def public_formula_records(records):
+    return [
+        {
+            "formula_name": formula_names(record),
+            "symptoms": formula_symptoms_text(record),
+            "composition": normalize_text(record.get("composition")),
+            "notes": normalize_text(record.get("notes"))
+        }
+        for record in records
+    ]
 
 
 def backup_file(path, prefix):
@@ -162,87 +204,20 @@ def setup_theme(root):
 def default_records():
     created = "2026-05-24 00:00:00"
     return [
-        {
-            "id": 1,
-            "system": "六经辨证",
-            "category": "太阳病证",
-            "sub_category": "太阳经证",
-            "syndrome_name": "太阳中风",
-            "symptoms": ["恶风发热", "汗出", "头项强痛", "鼻鸣", "干呕", "舌苔薄白", "脉浮缓"],
-            "symptom_description": "恶风发热，汗出，头项强痛，或见鼻鸣，干呕，舌苔薄白，脉浮缓。",
-            "formulas": [{"name": "桂枝汤", "composition": "桂枝、芍药、生姜、大枣、甘草", "usage": "", "note": "对应太阳中风证。"}],
-            "treatment_plan": "可参考桂枝汤方案，由专业人员结合实际情况辨证使用。",
-            "notes": "仅作为知识库检索内容。",
-            "created_at": created,
-            "updated_at": created
-        },
-        {
-            "id": 2,
-            "system": "六经辨证",
-            "category": "太阳病证",
-            "sub_category": "太阳经证",
-            "syndrome_name": "太阳伤寒",
-            "symptoms": ["恶寒发热", "头项强痛", "身体疼痛", "无汗而喘", "脉浮紧"],
-            "symptom_description": "恶寒发热，头项强痛，身体疼痛，无汗而喘，脉浮紧。",
-            "formulas": [{"name": "麻黄汤", "composition": "麻黄、桂枝、杏仁、甘草", "usage": "", "note": "示例方剂。"}],
-            "treatment_plan": "可参考麻黄汤方案，由专业人员结合实际情况辨证使用。",
-            "notes": "仅作为知识库检索内容。",
-            "created_at": created,
-            "updated_at": created
-        },
-        {
-            "id": 3,
-            "system": "六经辨证",
-            "category": "少阳病证",
-            "sub_category": "",
-            "syndrome_name": "少阳病证",
-            "symptoms": ["寒热往来", "胸胁苦满", "默默不欲饮食", "心烦喜呕", "口苦", "咽干", "目眩", "脉弦"],
-            "symptom_description": "寒热往来，胸胁苦满，默默不欲饮食，心烦喜呕，口苦，咽干，目眩，脉弦。",
-            "formulas": [{"name": "小柴胡汤", "composition": "柴胡、黄芩、人参、半夏、生姜、大枣、甘草", "usage": "", "note": "示例方剂。"}],
-            "treatment_plan": "可参考小柴胡汤方案，由专业人员结合实际情况辨证使用。",
-            "notes": "仅作为知识库检索内容。",
-            "created_at": created,
-            "updated_at": created
-        },
-        {
-            "id": 4,
-            "system": "脏腑辨证",
-            "category": "脾胃病证",
-            "sub_category": "",
-            "syndrome_name": "脾胃虚寒",
-            "symptoms": ["胃脘隐痛", "喜温喜按", "食少", "便溏", "四肢不温"],
-            "symptom_description": "胃脘隐痛，喜温喜按，食少，便溏，四肢不温。",
-            "formulas": [{"name": "理中汤", "composition": "人参、干姜、白术、甘草", "usage": "", "note": "示例方剂。"}],
-            "treatment_plan": "可参考理中汤方案，由专业人员结合实际情况辨证使用。",
-            "notes": "仅作为知识库检索内容。",
-            "created_at": created,
-            "updated_at": created
-        },
-        {
-            "id": 5,
-            "system": "自定义病症",
-            "category": "合并病症",
-            "sub_category": "",
-            "syndrome_name": "太阳少阳合病",
-            "symptoms": ["恶寒发热", "头项强痛", "寒热往来", "胸胁苦满", "口苦", "咽干"],
-            "symptom_description": "恶寒发热，头项强痛，寒热往来，胸胁苦满，口苦，咽干。",
-            "formulas": [{"name": "柴胡桂枝汤", "composition": "柴胡、黄芩、人参、半夏、桂枝、芍药、生姜、大枣、甘草", "usage": "", "note": "示例方剂。"}],
-            "treatment_plan": "由医生或专业人员根据具体情况调整，仅作为知识库资料参考。",
-            "notes": "复杂病症可作为独立记录录入，程序只负责检索展示。",
-            "created_at": created,
-            "updated_at": created
-        }
+
     ]
 
 
 def validate_records(data):
     if not isinstance(data, list):
         raise ValueError("JSON 顶层结构必须是记录列表。")
+    simplified = []
     used_ids = set()
     next_id = 1
     for index, item in enumerate(data, start=1):
         if not isinstance(item, dict):
             raise ValueError(f"第 {index} 条记录不是有效对象。")
+        item = simplify_formula_record(item, index)
         item_id = item.get("id")
         if not isinstance(item_id, int) or item_id in used_ids:
             while next_id in used_ids:
@@ -250,27 +225,12 @@ def validate_records(data):
             item_id = next_id
         item["id"] = item_id
         used_ids.add(item_id)
-        for key, default in [
-            ("system", ""),
-            ("category", ""),
-            ("sub_category", ""),
-            ("syndrome_name", ""),
-            ("symptoms", []),
-            ("symptom_description", ""),
-            ("formulas", []),
-            ("treatment_plan", ""),
-            ("notes", ""),
-            ("created_at", now_text()),
-            ("updated_at", now_text())
-        ]:
-            item.setdefault(key, default)
-        if isinstance(item.get("symptoms"), str):
-            item["symptoms"] = split_keywords(item["symptoms"])
-        if not isinstance(item.get("symptoms"), list):
-            item["symptoms"] = []
-        if not isinstance(item.get("formulas"), list):
-            item["formulas"] = []
-    return data
+        item["formula_name"] = normalize_text(item.get("formula_name"))
+        item["symptoms"] = formula_symptoms_text(item)
+        item["composition"] = normalize_text(item.get("composition"))
+        item["notes"] = normalize_text(item.get("notes"))
+        simplified.append(item)
+    return simplified
 
 
 def validate_patients(data):
@@ -461,7 +421,7 @@ class MainWindowApp:
     def save_data(self):
         try:
             backup_file(DATA_PATH, "data")
-            write_json(DATA_PATH, self.records)
+            write_json(DATA_PATH, public_formula_records(self.records))
         except OSError as exc:
             messagebox.showerror("保存失败", f"知识库保存失败，请检查文件权限或磁盘空间。\n\n错误信息：{exc}")
             return False
@@ -621,20 +581,8 @@ class MainWindowApp:
         query_entry.grid(row=0, column=1, sticky="ew", padx=8)
         query_entry.bind("<Return>", lambda event: self.refresh_knowledge_results())
         ttk.Button(controls, text="搜索", command=self.refresh_knowledge_results).grid(row=0, column=2, padx=(0, 6))
-        ttk.Button(controls, text="清空", command=lambda: (self.k_query.set(""), self.k_system.set(ALL_OPTION), self.k_category.set(ALL_OPTION), self.refresh_knowledge_results())).grid(row=0, column=3)
-
-        systems = sorted({normalize_text(item.get("system")) for item in self.records if normalize_text(item.get("system"))})
-        categories = sorted({normalize_text(item.get("category")) for item in self.records if normalize_text(item.get("category"))})
-        self.k_system = tk.StringVar(value=ALL_OPTION)
-        self.k_category = tk.StringVar(value=ALL_OPTION)
-        ttk.Label(controls, text="辨证体系").grid(row=1, column=0, sticky="w", pady=(8, 0))
-        system_box = ttk.Combobox(controls, textvariable=self.k_system, state="readonly", width=22, values=[ALL_OPTION] + systems)
-        system_box.grid(row=1, column=1, sticky="w", padx=8, pady=(8, 0))
-        system_box.bind("<<ComboboxSelected>>", lambda event: self.refresh_knowledge_results())
-        ttk.Label(controls, text="一级分类").grid(row=1, column=2, sticky="e", pady=(8, 0))
-        category_box = ttk.Combobox(controls, textvariable=self.k_category, state="readonly", width=22, values=[ALL_OPTION] + categories)
-        category_box.grid(row=1, column=3, sticky="w", pady=(8, 0))
-        category_box.bind("<<ComboboxSelected>>", lambda event: self.refresh_knowledge_results())
+        ttk.Button(controls, text="清空", command=lambda: (self.k_query.set(""), self.refresh_knowledge_results())).grid(row=0, column=3)
+        ttk.Label(controls, text="知识库每条只包含：方剂名称、对应症状、方剂组成、备注。", style="Muted.TLabel").grid(row=1, column=1, sticky="w", padx=8, pady=(8, 0))
 
         paned = ttk.PanedWindow(page, orient=tk.HORIZONTAL)
         paned.grid(row=2, column=0, sticky="nsew")
@@ -664,9 +612,9 @@ class MainWindowApp:
         buttons = ttk.Frame(page)
         buttons.grid(row=3, column=0, sticky="ew", pady=(8, 0))
         for text, command in [
-            ("新增知识库记录", lambda: self.show_knowledge_edit_page()),
-            ("编辑当前记录", self.edit_current_knowledge),
-            ("删除当前记录", self.delete_current_knowledge),
+            ("新增方剂", lambda: self.show_knowledge_edit_page()),
+            ("编辑当前方剂", self.edit_current_knowledge),
+            ("删除当前方剂", self.delete_current_knowledge),
             ("保存知识库", lambda: messagebox.showinfo("保存成功", "知识库数据已保存，并已自动备份。") if self.save_data() else None),
             ("导入知识库", self.import_data),
             ("导出知识库", self.export_data)
@@ -679,41 +627,27 @@ class MainWindowApp:
     def score_record(self, record, tokens, raw_query):
         score = 0
         matched = set()
-        syndrome = normalize_text(record.get("syndrome_name"))
+        formula_name = formula_names(record)
         raw = normalize_text(raw_query)
-        if raw and syndrome == raw:
+        if raw and formula_name == raw:
             score += 30
             matched.add(raw)
-        text_fields = [normalize_text(record.get("system")), normalize_text(record.get("category")), normalize_text(record.get("sub_category"))]
-        description = normalize_text(record.get("symptom_description"))
-        treatment_notes = f"{normalize_text(record.get('treatment_plan'))} {normalize_text(record.get('notes'))}"
-        symptoms = [normalize_text(item) for item in record.get("symptoms", []) or []]
+        symptoms = formula_symptoms_text(record)
+        composition = normalize_text(record.get("composition"))
+        notes = normalize_text(record.get("notes"))
         for token in tokens:
             if not token:
                 continue
-            if syndrome and token in syndrome and syndrome != raw:
+            if formula_name and token in formula_name and formula_name != raw:
                 score += 15
                 matched.add(token)
-            for symptom in symptoms:
-                if token == symptom or token in symptom or symptom in token:
-                    score += 6
-                    matched.add(token)
-                    break
-            if description and token in description:
-                score += 3
+            if symptoms and token in symptoms:
+                score += 6
                 matched.add(token)
-            for value in text_fields:
-                if value and token in value:
-                    score += 3
-                    matched.add(token)
-                    break
-            for formula in record.get("formulas", []) or []:
-                name = normalize_text(formula.get("name"))
-                if name and (token in name or name in token):
-                    score += 8
-                    matched.add(token)
-                    break
-            if treatment_notes and token in treatment_notes:
+            if composition and token in composition:
+                score += 4
+                matched.add(token)
+            if notes and token in notes:
                 score += 1
                 matched.add(token)
         return score, sorted(matched)
@@ -721,26 +655,21 @@ class MainWindowApp:
     def refresh_knowledge_results(self):
         query = self.k_query.get()
         tokens = split_keywords(query)
-        selected_system = self.k_system.get()
-        selected_category = self.k_category.get()
         results = []
         for record in self.records:
-            if selected_system != ALL_OPTION and record.get("system") != selected_system:
-                continue
-            if selected_category != ALL_OPTION and record.get("category") != selected_category:
-                continue
             if not tokens:
                 results.append((0, record, ["全部记录"]))
                 continue
             score, matched = self.score_record(record, tokens, query)
             if score > 0:
                 results.append((score, record, matched))
-        results.sort(key=lambda item: (-item[0], normalize_text(item[1].get("syndrome_name"))))
+        results.sort(key=lambda item: (-item[0], formula_names(item[1])))
         self.knowledge_results = results
         self.k_list.delete(0, tk.END)
         for score, record, _matched in results:
             prefix = f"分数 {score} | " if tokens else ""
-            self.k_list.insert(tk.END, f"{prefix}{record.get('syndrome_name', '')} | {formula_names(record) or '未填写方剂'} | {record.get('system', '')}")
+            symptom_preview = formula_symptoms_text(record)[:36]
+            self.k_list.insert(tk.END, f"{prefix}{formula_names(record) or '未填写方剂'} | {symptom_preview}")
         if results:
             self.k_list.selection_set(0)
             self.show_knowledge_detail(results[0][1], results[0][2], results[0][0])
@@ -769,45 +698,33 @@ class MainWindowApp:
             f"匹配分数：{score}",
             f"匹配关键词：{'、'.join(matched) if matched else '无'}",
             "",
-            f"辨证体系：{record.get('system', '')}",
-            f"一级分类：{record.get('category', '')}",
-            f"二级分类：{record.get('sub_category', '')}",
-            f"证型/病症名称：{record.get('syndrome_name', '')}",
+            f"方剂名称：{formula_names(record) or '未填写'}",
             "",
-            "症状关键词：",
-            "、".join(record.get("symptoms", []) or []),
+            "方剂对应症状：",
+            formula_symptoms_text(record) or "未填写",
             "",
-            "完整症状描述：",
-            record.get("symptom_description", ""),
+            "方剂组成：",
+            record.get("composition", "") or "未填写",
             "",
-            "对应方剂参考："
+            "备注：",
+            record.get("notes", "") or "未填写",
+            "",
+            DISCLAIMER
         ]
-        formulas = record.get("formulas", []) or []
-        if formulas:
-            for index, formula in enumerate(formulas, start=1):
-                lines.extend([
-                    f"{index}. {formula.get('name', '')}",
-                    f"   方剂组成：{formula.get('composition', '')}",
-                    f"   用法或说明：{formula.get('usage', '')}",
-                    f"   方剂备注：{formula.get('note', '')}"
-                ])
-        else:
-            lines.append("未填写")
-        lines.extend(["", "治疗方案说明：", record.get("treatment_plan", ""), "", "备注：", record.get("notes", ""), "", DISCLAIMER])
         self.set_text_readonly(self.k_detail, "\n".join(lines))
 
     def edit_current_knowledge(self):
         if not self.selected_record:
-            messagebox.showinfo("提示", "请先选择一条知识库记录。")
+            messagebox.showinfo("提示", "请先选择一条方剂记录。")
             return
         self.show_knowledge_edit_page(self.selected_record)
 
     def delete_current_knowledge(self):
         if not self.selected_record:
-            messagebox.showinfo("提示", "请先选择一条知识库记录。")
+            messagebox.showinfo("提示", "请先选择一条方剂记录。")
             return
-        name = self.selected_record.get("syndrome_name", "")
-        if not messagebox.askyesno("确认删除", f"确定删除“{name}”这条知识库记录吗？"):
+        name = formula_names(self.selected_record)
+        if not messagebox.askyesno("确认删除", f"确定删除“{name}”这条方剂记录吗？"):
             return
         self.records = [item for item in self.records if item is not self.selected_record and item.get("id") != self.selected_record.get("id")]
         self.selected_record = None
@@ -822,7 +739,7 @@ class MainWindowApp:
         page.grid(row=0, column=0, sticky="nsew")
         page.columnconfigure(0, weight=1)
         page.rowconfigure(1, weight=1)
-        ttk.Label(page, text="编辑知识库记录" if record else "新增知识库记录", style="PageTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
+        ttk.Label(page, text="编辑方剂" if record else "新增方剂", style="PageTitle.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
 
         canvas = tk.Canvas(page, highlightthickness=0, background=COLOR_BG)
         scroll = ttk.Scrollbar(page, orient=tk.VERTICAL, command=canvas.yview)
@@ -837,68 +754,30 @@ class MainWindowApp:
 
         row = 0
         vars_map = {}
-        for key, label in [
-            ("system", "辨证体系/知识分类"),
-            ("category", "一级分类"),
-            ("sub_category", "二级分类"),
-            ("syndrome_name", "证型/病症名称")
-        ]:
-            vars_map[key] = self.entry_row(form, row, key, label, record)
-            row += 1
+        vars_map["formula_name"] = self.entry_row(form, row, "formula_name", "方剂名称", record)
+        row += 1
         text_map = {}
-        symptoms_value = dict(record)
-        symptoms_value["symptoms"] = "、".join(record.get("symptoms", []) or [])
-        text_map["symptoms"] = self.text_row(form, row, "symptoms", "症状关键词", symptoms_value, 4)
+        text_map["symptoms"] = self.text_row(form, row, "symptoms", "方剂对应症状", record, 5)
         row += 1
-        text_map["symptom_description"] = self.text_row(form, row, "symptom_description", "完整症状描述", record, 4)
+        text_map["composition"] = self.text_row(form, row, "composition", "方剂组成", record, 4)
         row += 1
-        formula = (record.get("formulas", []) or [{}])[0] if record.get("formulas") else {}
-        formula_values = {
-            "formula_name": formula.get("name", ""),
-            "composition": formula.get("composition", ""),
-            "usage": formula.get("usage", ""),
-            "formula_note": formula.get("note", "")
-        }
-        vars_map["formula_name"] = self.entry_row(form, row, "formula_name", "对应方剂名称", formula_values)
-        row += 1
-        text_map["composition"] = self.text_row(form, row, "composition", "方剂组成", formula_values, 3)
-        row += 1
-        text_map["usage"] = self.text_row(form, row, "usage", "用法或说明", formula_values, 3)
-        row += 1
-        text_map["formula_note"] = self.text_row(form, row, "formula_note", "方剂备注", formula_values, 3)
-        row += 1
-        text_map["treatment_plan"] = self.text_row(form, row, "treatment_plan", "治疗方案说明", record, 4)
-        row += 1
-        text_map["notes"] = self.text_row(form, row, "notes", "总备注", record, 3)
+        text_map["notes"] = self.text_row(form, row, "notes", "备注", record, 4)
 
         buttons = ttk.Frame(page)
         buttons.grid(row=2, column=0, sticky="e", pady=(8, 0))
         ttk.Button(buttons, text="返回", command=self.show_knowledge_page, style="Ghost.TButton").pack(side=tk.RIGHT, padx=(8, 0))
 
         def save_form():
-            syndrome_name = vars_map["syndrome_name"].get().strip()
-            if not syndrome_name:
-                messagebox.showwarning("提示", "请填写证型/病症名称。")
+            formula_name = vars_map["formula_name"].get().strip()
+            if not formula_name:
+                messagebox.showwarning("提示", "请填写方剂名称。")
                 return
-            formula_obj = {
-                "name": vars_map["formula_name"].get().strip(),
-                "composition": self.text_get(text_map["composition"]),
-                "usage": self.text_get(text_map["usage"]),
-                "note": self.text_get(text_map["formula_note"])
-            }
             new_record = {
                 "id": record.get("id") or self.next_record_id(),
-                "system": vars_map["system"].get().strip(),
-                "category": vars_map["category"].get().strip(),
-                "sub_category": vars_map["sub_category"].get().strip(),
-                "syndrome_name": syndrome_name,
-                "symptoms": split_keywords(self.text_get(text_map["symptoms"])),
-                "symptom_description": self.text_get(text_map["symptom_description"]),
-                "formulas": [formula_obj] if any(formula_obj.values()) else [],
-                "treatment_plan": self.text_get(text_map["treatment_plan"]),
-                "notes": self.text_get(text_map["notes"]),
-                "created_at": record.get("created_at") or now_text(),
-                "updated_at": now_text()
+                "formula_name": formula_name,
+                "symptoms": self.text_get(text_map["symptoms"]),
+                "composition": self.text_get(text_map["composition"]),
+                "notes": self.text_get(text_map["notes"])
             }
             if record:
                 for index, item in enumerate(self.records):
@@ -924,7 +803,7 @@ class MainWindowApp:
         if not path:
             return
         try:
-            write_json(Path(path), self.records)
+            write_json(Path(path), public_formula_records(self.records))
         except OSError as exc:
             messagebox.showerror("导出失败", f"知识库导出失败：\n{exc}")
             return
@@ -1046,6 +925,7 @@ class MainWindowApp:
             for selected in visit.get("selected_syndromes", []) or []:
                 if isinstance(selected, dict):
                     searchable.extend([
+                        selected.get("formula_name", ""),
                         selected.get("syndrome_name", ""),
                         selected.get("formula_names", ""),
                         selected.get("formula_reference", ""),
@@ -1264,58 +1144,225 @@ class MainWindowApp:
         </section>
         """
 
-    def build_print_html(self, patient, visit):
-        rows = [
-            ("姓名", patient.get("name"), "性别", patient.get("gender")),
-            ("年龄", patient.get("age"), "联系电话", patient.get("phone")),
-            ("联系地址", patient.get("address"), "就诊日期", visit.get("visit_date")),
-            ("打印时间", now_text(), "病历编号", f"P{patient.get('id', '')}-V{visit.get('id', '')}")
-        ]
-        table_rows = "\n".join(
-            f"<tr><th>{html.escape(a)}</th><td>{self.html_value(b)}</td><th>{html.escape(c)}</th><td>{self.html_value(d)}</td></tr>"
-            for a, b, c, d in rows
+    def print_field(self, label, value, class_name=""):
+        return (
+            f'<span class="field {html.escape(class_name)}">'
+            f'<b>{html.escape(label)}：</b><em>{self.html_value(value)}</em>'
+            "</span>"
         )
-        sections = "\n".join([
-            self.html_section("主诉", visit.get("chief_complaint")),
-            self.html_section("现病情况 / 症状记录", visit.get("present_illness")),
-            self.html_section("辨证记录 / 病症记录", visit.get("syndrome_record")),
-            self.html_section("方剂参考 / 处理方案", visit.get("formula_reference")),
-            self.html_section("治疗方案说明", visit.get("treatment_plan")),
-            self.html_section("既往史", patient.get("past_history")),
-            self.html_section("过敏史", patient.get("allergy_history")),
-            self.html_section("随访与注意事项", visit.get("advice")),
-            self.html_section("本次备注", visit.get("notes"))
-        ])
+
+    def print_multiline_field(self, label, value):
+        value = normalize_text(value)
+        return (
+            f'<div class="long-field"><b>{html.escape(label)}：</b>'
+            f'<em>{html.escape(value) if value else "未填写"}</em></div>'
+        )
+
+    def prescription_items(self, visit):
+        items = []
+        seen = set()
+        for selected in visit.get("selected_syndromes", []) or []:
+            if not isinstance(selected, dict):
+                continue
+            name = normalize_text(selected.get("formula_name")) or normalize_text(selected.get("formula_names")) or normalize_text(selected.get("syndrome_name"))
+            composition = normalize_text(selected.get("composition"))
+            note = normalize_text(selected.get("notes")) or normalize_text(selected.get("treatment_plan"))
+            if not name and not composition:
+                continue
+            key = (name, composition)
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append({
+                "name": name or "未填写方剂",
+                "composition": composition,
+                "note": note
+            })
+        return items
+
+    def prescription_html(self, visit):
+        items = self.prescription_items(visit)
+        if items:
+            blocks = []
+            for item in items:
+                composition = html.escape(item["composition"]) if item["composition"] else "组成未填写"
+                note = html.escape(item["note"]) if item["note"] else ""
+                note_html = f'<div class="rx-note">{note}</div>' if note else ""
+                blocks.append(
+                    '<div class="rx-item">'
+                    f'<div class="rx-name">【{html.escape(item["name"])}】</div>'
+                    f'<div class="rx-composition">{composition}</div>'
+                    f'{note_html}'
+                    '</div>'
+                )
+            return "\n".join(blocks)
+        fallback = normalize_text(visit.get("formula_reference"))
+        if not fallback:
+            fallback = "未填写"
+        return f'<div class="rx-free">{html.escape(fallback).replace(chr(10), "<br>")}</div>'
+
+    def build_print_html(self, patient, visit):
+        clinic_name = APP_TITLE.replace("系统", "")
+        record_no = f"P{patient.get('id', '')}-V{visit.get('id', '')}"
+        symptoms = "；".join(
+            part for part in [
+                normalize_text(visit.get("chief_complaint")),
+                normalize_text(visit.get("present_illness"))
+            ]
+            if part
+        )
+        diagnosis = normalize_text(visit.get("syndrome_record"))
+        if not diagnosis:
+            names = [
+                normalize_text(item.get("formula_name")) or normalize_text(item.get("syndrome_name"))
+                for item in visit.get("selected_syndromes", []) or []
+                if isinstance(item, dict)
+            ]
+            diagnosis = "、".join(name for name in names if name)
+        treatment_notes = "\n".join(
+            part for part in [
+                normalize_text(visit.get("treatment_plan")),
+                normalize_text(visit.get("notes")),
+                normalize_text(visit.get("advice"))
+            ]
+            if part
+        )
+        history = "；".join(
+            f"{label}：{value}"
+            for label, value in [
+                ("既往史", normalize_text(patient.get("past_history"))),
+                ("过敏史", normalize_text(patient.get("allergy_history")))
+            ]
+            if value
+        )
         return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>门诊病历_{html.escape(self.display_value(patient.get('name')))}</title>
+  <title>门诊处方笺_{html.escape(self.display_value(patient.get('name')))}</title>
   <style>
-    @page {{ size: A4; margin: 11mm; }}
-    body {{ font-family: "Microsoft YaHei", "SimSun", sans-serif; color: #17211c; font-size: 12px; line-height: 1.38; }}
-    .title {{ text-align: center; font-size: 20px; font-weight: 700; margin: 0 0 2px; }}
-    .subtitle {{ text-align: center; color: #66746c; margin: 0 0 8px; font-size: 11px; }}
-    table.info {{ width: 100%; border-collapse: collapse; margin-bottom: 7px; table-layout: fixed; }}
-    table.info th, table.info td {{ border: 1px solid #9fb7ad; padding: 4px 6px; vertical-align: top; }}
-    table.info th {{ width: 16%; background: #edf3ef; text-align: right; font-weight: 700; }}
-    table.info td {{ width: 34%; }}
-    .section {{ margin-top: 6px; break-inside: avoid; }}
-    .section h2 {{ font-size: 13px; border-left: 3px solid #1f7a6d; padding-left: 6px; margin: 0 0 3px; }}
-    .section-body {{ border: 1px solid #cfd8d2; padding: 5px 7px; min-height: 14px; white-space: normal; }}
-    .empty {{ color: #88958e; }}
-    .notice {{ margin-top: 8px; padding-top: 5px; border-top: 1px solid #cfd8d2; color: #66746c; font-size: 10px; }}
-    .signature {{ margin-top: 18px; text-align: right; font-size: 13px; }}
-    .signature span {{ display: inline-block; min-width: 120px; border-bottom: 1px solid #17211c; margin-left: 6px; }}
+    @page {{ size: A4 portrait; margin: 13mm 14mm; }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "SimSun", "Microsoft YaHei", sans-serif;
+      color: #111;
+      background: #fff;
+      font-size: 14px;
+      line-height: 1.45;
+    }}
+    .paper {{
+      min-height: 270mm;
+      display: flex;
+      flex-direction: column;
+      padding: 4mm 2mm 0;
+    }}
+    .top-line {{ display: flex; justify-content: flex-end; align-items: center; min-height: 24px; }}
+    .stamp {{ border: 1px solid #333; padding: 2px 8px; font-size: 14px; }}
+    .clinic {{ text-align: center; font-size: 20px; font-weight: 700; letter-spacing: 1px; margin: 4px 0 0; }}
+    .title {{ text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 7px; margin: 0 0 8px 7px; }}
+    .patient-lines {{ border-top: 1px solid transparent; }}
+    .row {{ display: flex; gap: 14px; margin: 5px 0; align-items: flex-end; }}
+    .field {{ display: inline-flex; align-items: flex-end; min-width: 130px; white-space: nowrap; }}
+    .field.wide {{ flex: 1; min-width: 220px; }}
+    .field.mid {{ min-width: 170px; }}
+    .field b, .long-field b {{ font-weight: 700; }}
+    .field em {{
+      flex: 1;
+      min-height: 22px;
+      padding: 0 8px 1px;
+      border-bottom: 1px solid #444;
+      font-style: normal;
+      text-align: center;
+    }}
+    .long-field {{
+      display: flex;
+      min-height: 24px;
+      margin: 5px 0;
+      align-items: flex-end;
+    }}
+    .long-field em {{
+      flex: 1;
+      min-height: 22px;
+      padding: 0 8px 1px;
+      border-bottom: 1px solid #444;
+      font-style: normal;
+      white-space: pre-wrap;
+    }}
+    .rp-wrap {{
+      flex: 1;
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 8px;
+      margin-top: 14px;
+      min-height: 118mm;
+    }}
+    .rp {{ font-family: "Times New Roman", serif; font-size: 34px; line-height: 1; }}
+    .rx-list {{
+      padding-top: 8px;
+      font-size: 18px;
+      line-height: 1.65;
+      white-space: normal;
+    }}
+    .rx-item {{ margin: 0 0 12px; break-inside: avoid; }}
+    .rx-name {{ font-weight: 700; }}
+    .rx-composition {{ padding-left: 24px; }}
+    .rx-note {{ padding-left: 24px; font-size: 14px; }}
+    .rx-free {{ white-space: pre-wrap; }}
+    .note-line {{ margin: 3px 0; font-size: 13px; }}
+    .notice {{ margin-top: 6px; color: #555; font-size: 10px; }}
+    .signatures {{ margin-top: 12px; border-top: 1px solid #555; padding-top: 10px; }}
+    .sign-row {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; margin: 8px 0; }}
+    .sign {{ display: flex; align-items: flex-end; min-height: 26px; }}
+    .sign b {{ font-weight: 700; white-space: nowrap; }}
+    .sign span {{ flex: 1; border-bottom: 1px solid #444; margin-left: 8px; min-height: 22px; }}
+    @media print {{
+      body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+      .paper {{ min-height: auto; height: 270mm; }}
+    }}
   </style>
 </head>
 <body>
-  <h1 class="title">门诊病历单</h1>
-  <p class="subtitle">{html.escape(APP_TITLE)}</p>
-  <table class="info">{table_rows}</table>
-  {sections}
-  <div class="signature">门诊医生：<span></span> 日期：<span></span></div>
-  <div class="notice">{html.escape(DISCLAIMER)}</div>
+  <main class="paper">
+    <div class="top-line"><span class="stamp">普通</span></div>
+    <div class="clinic">{html.escape(clinic_name)}</div>
+    <div class="title">处方笺</div>
+    <section class="patient-lines">
+      <div class="row">
+        {self.print_field("姓名", patient.get("name"), "mid")}
+        {self.print_field("性别", patient.get("gender"))}
+        {self.print_field("年龄", patient.get("age"))}
+        {self.print_field("日期", visit.get("visit_date"), "mid")}
+      </div>
+      <div class="row">
+        {self.print_field("电话", patient.get("phone"), "mid")}
+        {self.print_field("科别", "中医门诊")}
+        {self.print_field("编号", record_no, "wide")}
+      </div>
+      {self.print_multiline_field("地址", patient.get("address"))}
+      {self.print_multiline_field("症状", symptoms)}
+      {self.print_multiline_field("记录", diagnosis)}
+    </section>
+    <section class="rp-wrap">
+      <div class="rp">Rp</div>
+      <div class="rx-list">{self.prescription_html(visit)}</div>
+    </section>
+    {f'<div class="note-line"><b>说明：</b>{html.escape(treatment_notes).replace(chr(10), "；")}</div>' if treatment_notes else ''}
+    {f'<div class="note-line"><b>病史：</b>{html.escape(history)}</div>' if history else ''}
+    <section class="signatures">
+      <div class="sign-row">
+        <div class="sign"><b>医师：</b><span></span></div>
+        <div class="sign"><b>配药：</b><span></span></div>
+        <div class="sign"><b>复核：</b><span></span></div>
+      </div>
+      <div class="sign-row">
+        <div class="sign"><b>药费：</b><span></span></div>
+        <div class="sign"><b>其他：</b><span></span></div>
+        <div class="sign"><b>合计：</b><span></span></div>
+      </div>
+    </section>
+    <div class="notice">{html.escape(DISCLAIMER)}</div>
+  </main>
 </body>
 </html>"""
 
@@ -1467,7 +1514,7 @@ class MainWindowApp:
         link_scroll = ttk.Scrollbar(link_frame, orient=tk.VERTICAL, command=link_list.yview)
         link_scroll.grid(row=4, column=1, sticky="ns")
         link_list.configure(yscrollcommand=link_scroll.set)
-        ttk.Label(link_frame, text="病症详情", style="Section.TLabel").grid(row=5, column=0, sticky="w", pady=(8, 2))
+        ttk.Label(link_frame, text="方剂详情", style="Section.TLabel").grid(row=5, column=0, sticky="w", pady=(8, 2))
         link_detail = ScrolledText(link_frame, height=8, wrap=tk.WORD)
         self.style_text_widget(link_detail, readonly=True)
         link_detail.grid(row=6, column=0, sticky="nsew")
@@ -1505,23 +1552,20 @@ class MainWindowApp:
             link_detail.configure(state=tk.DISABLED)
 
         def selected_to_detail(selected):
+            symptoms = selected.get("symptoms", "")
+            if isinstance(symptoms, list):
+                symptoms = "、".join(normalize_text(item) for item in symptoms if normalize_text(item))
             lines = [
-                f"证型/病症名称：{selected.get('syndrome_name', '')}",
-                f"辨证体系：{selected.get('system', '')}",
-                f"一级分类：{selected.get('category', '')}",
-                f"二级分类：{selected.get('sub_category', '')}",
+                f"方剂名称：{selected.get('formula_name') or selected.get('syndrome_name', '')}",
                 "",
-                "症状关键词：",
-                "、".join(selected.get("symptoms", []) or []),
+                "方剂对应症状：",
+                symptoms,
                 "",
-                "症状描述：",
-                selected.get("symptom_description", ""),
+                "方剂组成：",
+                selected.get("composition", ""),
                 "",
-                "方剂参考：",
-                selected.get("formula_reference", "") or selected.get("formula_names", ""),
-                "",
-                "治疗方案说明：",
-                selected.get("treatment_plan", "")
+                "备注：",
+                selected.get("notes", "") or selected.get("formula_reference", "")
             ]
             return "\n".join(lines)
 
@@ -1529,37 +1573,20 @@ class MainWindowApp:
             if item["kind"] == "history":
                 return selected_to_detail(item["history"])
             record = item["record"]
-            formula_lines = []
-            for index, formula in enumerate(record.get("formulas", []) or [], start=1):
-                formula_lines.extend([
-                    f"{index}. {formula.get('name', '')}",
-                    f"   组成：{formula.get('composition', '')}",
-                    f"   说明：{formula.get('usage', '')}",
-                    f"   备注：{formula.get('note', '')}"
-                ])
             lines = [
                 f"匹配分数：{item.get('score', '')}",
                 f"匹配关键词：{'、'.join(item.get('matched', [])) if item.get('matched') else '无'}",
                 "",
-                f"证型/病症名称：{record.get('syndrome_name', '')}",
-                f"辨证体系：{record.get('system', '')}",
-                f"一级分类：{record.get('category', '')}",
-                f"二级分类：{record.get('sub_category', '')}",
+                f"方剂名称：{formula_names(record)}",
                 "",
-                "症状关键词：",
-                "、".join(record.get("symptoms", []) or []),
+                "方剂对应症状：",
+                formula_symptoms_text(record) or "未填写",
                 "",
-                "完整症状描述：",
-                record.get("symptom_description", ""),
-                "",
-                "对应方剂参考：",
-                "\n".join(formula_lines) if formula_lines else "未填写",
-                "",
-                "治疗方案说明：",
-                record.get("treatment_plan", ""),
+                "方剂组成：",
+                record.get("composition", "") or "未填写",
                 "",
                 "备注：",
-                record.get("notes", "")
+                record.get("notes", "") or "未填写"
             ]
             return "\n".join(lines)
 
@@ -1603,9 +1630,9 @@ class MainWindowApp:
             for item in selected_syndromes:
                 if not isinstance(item, dict):
                     continue
-                name = normalize_text(item.get("syndrome_name"))
-                formula = normalize_text(item.get("formula_names")) or normalize_text(item.get("formula_reference"))
-                selected_list.insert(tk.END, f"{name} | {formula[:36]}")
+                name = normalize_text(item.get("formula_name")) or normalize_text(item.get("syndrome_name"))
+                symptoms = formula_symptoms_text(item)
+                selected_list.insert(tk.END, f"{name} | {symptoms[:36]}")
 
         def remove_named_block(widget, name):
             marker = f"【{name}】"
@@ -1619,17 +1646,18 @@ class MainWindowApp:
         def remove_selected_syndrome():
             selection = selected_list.curselection()
             if not selection:
-                messagebox.showinfo("提示", "请先在“已加入本次病历”中选择一个病症。")
+                messagebox.showinfo("提示", "请先在“已加入本次病历”中选择一个方剂。")
                 return
             index = selection[0]
             if index < 0 or index >= len(selected_syndromes):
                 return
             item = selected_syndromes.pop(index)
-            name = normalize_text(item.get("syndrome_name")) if isinstance(item, dict) else ""
+            name = (normalize_text(item.get("formula_name")) or normalize_text(item.get("syndrome_name"))) if isinstance(item, dict) else ""
             if name:
                 remove_named_block(text_map["syndrome_record"], name)
                 remove_named_block(text_map["formula_reference"], name)
                 remove_named_block(text_map["treatment_plan"], name)
+                remove_named_block(text_map["notes"], name)
             refresh_selected_list()
             set_link_detail(f"已移除：{name}\n\n如果病历正文中有医生手动补充的相关内容，请按需要再检查调整。")
 
@@ -1650,13 +1678,13 @@ class MainWindowApp:
                 score, matched = self.score_record(record, tokens, raw_query)
                 if score > 0:
                     found.append({"kind": "record", "record": record, "score": score, "matched": matched})
-            found.sort(key=lambda item: (-item["score"], normalize_text(item["record"].get("syndrome_name"))))
+            found.sort(key=lambda item: (-item["score"], formula_names(item["record"])))
             for item in found:
                 record = item["record"]
                 matched = "、".join(item["matched"]) if item["matched"] else "无"
-                add_link_item(item, f"分数 {item['score']} | {record.get('syndrome_name', '')} | {formula_names(record) or '未填写方剂'} | 匹配：{matched}")
+                add_link_item(item, f"分数 {item['score']} | {formula_names(record) or '未填写方剂'} | 匹配：{matched}")
             if not found:
-                messagebox.showinfo("提示", "未检索到匹配病症，可调整关键词或先维护知识库。")
+                messagebox.showinfo("提示", "未检索到匹配方剂，可调整关键词或先维护知识库。")
 
         def history_links():
             reset_link_list()
@@ -1668,7 +1696,7 @@ class MainWindowApp:
                 for item in selected:
                     if not isinstance(item, dict):
                         continue
-                    name = normalize_text(item.get("syndrome_name"))
+                    name = normalize_text(item.get("formula_name")) or normalize_text(item.get("syndrome_name"))
                     if not name or name in seen:
                         continue
                     seen.add(name)
@@ -1678,70 +1706,57 @@ class MainWindowApp:
                     if name and name not in seen:
                         seen.add(name)
                         item = {
+                            "formula_name": name,
                             "syndrome_name": name,
                             "formula_reference": old_visit.get("formula_reference", ""),
                             "treatment_plan": old_visit.get("treatment_plan", "")
                         }
                         add_link_item({"kind": "history", "history": item}, f"历史 | {name} | {old_visit.get('formula_reference', '')[:24]} | {old_visit.get('visit_date', '')}")
             if not link_results:
-                messagebox.showinfo("提示", "当前患者暂无可复用的历史病症。")
+                messagebox.showinfo("提示", "当前患者暂无可复用的历史方剂。")
 
         def record_to_selected(record):
-            formula_lines = []
-            for formula in record.get("formulas", []) or []:
-                parts = [normalize_text(formula.get("name"))]
-                if normalize_text(formula.get("composition")):
-                    parts.append(f"组成：{normalize_text(formula.get('composition'))}")
-                if normalize_text(formula.get("usage")):
-                    parts.append(f"说明：{normalize_text(formula.get('usage'))}")
-                if normalize_text(formula.get("note")):
-                    parts.append(f"备注：{normalize_text(formula.get('note'))}")
-                formula_lines.append("；".join(part for part in parts if part))
             return {
                 "record_id": record.get("id"),
-                "syndrome_name": record.get("syndrome_name", ""),
-                "system": record.get("system", ""),
-                "category": record.get("category", ""),
-                "sub_category": record.get("sub_category", ""),
-                "symptoms": record.get("symptoms", []) or [],
-                "symptom_description": record.get("symptom_description", ""),
+                "formula_name": formula_names(record),
+                "syndrome_name": formula_names(record),
+                "symptoms": formula_symptoms_text(record),
+                "composition": record.get("composition", ""),
+                "notes": record.get("notes", ""),
                 "formula_names": formula_names(record),
-                "formula_reference": "\n".join(formula_lines),
-                "treatment_plan": record.get("treatment_plan", "")
+                "formula_reference": f"{formula_names(record)}；组成：{record.get('composition', '')}".strip("；"),
+                "treatment_plan": record.get("notes", "")
             }
 
         def apply_checked():
             if not checked:
-                messagebox.showinfo("提示", "请先在列表中勾选一个或多个病症。")
+                messagebox.showinfo("提示", "请先在列表中勾选一个或多个方剂。")
                 return
-            existing = {normalize_text(item.get("syndrome_name")) for item in selected_syndromes if isinstance(item, dict)}
+            existing = {(normalize_text(item.get("formula_name")) or normalize_text(item.get("syndrome_name"))) for item in selected_syndromes if isinstance(item, dict)}
             added = 0
             for index in sorted(checked):
                 item = link_results[index]
                 selected = record_to_selected(item["record"]) if item["kind"] == "record" else dict(item["history"])
-                name = normalize_text(selected.get("syndrome_name"))
+                name = normalize_text(selected.get("formula_name")) or normalize_text(selected.get("syndrome_name"))
                 if not name or name in existing:
                     continue
                 existing.add(name)
                 selected_syndromes.append(selected)
-                syndrome_line = f"【{name}】{selected.get('system', '')} {selected.get('category', '')} {selected.get('sub_category', '')}".strip()
-                symptoms = selected.get("symptoms", []) or []
+                syndrome_line = f"【{name}】"
+                symptoms = selected.get("symptoms", "") or []
+                if isinstance(symptoms, list):
+                    symptoms = "、".join(symptoms)
                 if symptoms:
-                    syndrome_line += f"\n症状关键词：{'、'.join(symptoms)}"
-                if selected.get("symptom_description"):
-                    syndrome_line += f"\n症状描述：{selected.get('symptom_description')}"
-                self.append_text(text_map["syndrome_record"], syndrome_line)
-                formula_text = selected.get("formula_reference") or selected.get("formula_names") or ""
-                if formula_text:
-                    self.append_text(text_map["formula_reference"], f"【{name}】\n{formula_text}")
-                if selected.get("treatment_plan"):
-                    self.append_text(text_map["treatment_plan"], f"【{name}】\n{selected.get('treatment_plan')}")
+                    syndrome_line += f"\n对应症状：{symptoms}"
+                self.append_text(text_map["formula_reference"], f"{syndrome_line}\n组成：{selected.get('composition', '') or '未填写'}")
+                if selected.get("notes"):
+                    self.append_text(text_map["notes"], f"【{name}】\n{selected.get('notes')}")
                 added += 1
             refresh_selected_list()
-            messagebox.showinfo("已加入", f"已将 {added} 个病症及对应方剂加入本次就诊记录。" if added else "勾选的病症已在本次就诊记录中。")
+            messagebox.showinfo("已加入", f"已将 {added} 个方剂加入本次就诊记录。" if added else "勾选的方剂已在本次就诊记录中。")
 
-        ttk.Button(buttons, text="检索病症", command=search_links, style="Accent.TButton").pack(side=tk.LEFT, padx=(0, 6))
-        ttk.Button(buttons, text="显示历史病症", command=history_links).pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(buttons, text="检索方剂", command=search_links, style="Accent.TButton").pack(side=tk.LEFT, padx=(0, 6))
+        ttk.Button(buttons, text="显示历史方剂", command=history_links).pack(side=tk.LEFT, padx=(0, 6))
         ttk.Button(buttons, text="勾选/取消当前", command=toggle_current_checked).pack(side=tk.LEFT, padx=(0, 6))
         ttk.Button(buttons, text="加入勾选", command=apply_checked, style="Accent.TButton").pack(side=tk.LEFT)
         ttk.Button(selected_buttons, text="移除已加入", command=remove_selected_syndrome, style="Danger.TButton").pack(side=tk.LEFT)
